@@ -7,6 +7,7 @@ import {
   getDocs,
   deleteDoc,
   doc,
+  updateDoc,
 } from "firebase/firestore";
 
 import { db } from "@/lib/firebase";
@@ -17,29 +18,38 @@ type User = {
   email: string;
   role: string;
   department: string;
+  status: "Active" | "Inactive";
+  createdAt?: unknown;
 };
 
-type Department = {
-  id: string;
-  name: string;
+const ROLES = ["CEO", "Admin", "Tech", "Audit"];
+
+const ROLE_DEPARTMENTS: Record<string, string> = {
+  CEO: "Executive",
+  Admin: "Administration",
+  Tech: "Technology",
+  Audit: "Audit",
 };
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [departments, setDepartments] = useState<Department[]>([]);
-
   const [showForm, setShowForm] = useState(false);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("Admin");
-  const [department, setDepartment] = useState("");
+  const [status, setStatus] = useState<"Active" | "Inactive">("Active");
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const department = ROLE_DEPARTMENTS[role] || "General";
 
   async function loadUsers() {
     try {
-      const snapshot = await getDocs(
-        collection(db, "users")
-      );
+      setLoading(true);
+
+      const snapshot = await getDocs(collection(db, "users"));
 
       const data: User[] = snapshot.docs.map((item) => ({
         id: item.id,
@@ -48,186 +58,256 @@ export default function UsersPage() {
 
       setUsers(data);
     } catch (error) {
-      console.error("Users load error:", error);
-    }
-  }
-
-  async function loadDepartments() {
-    try {
-      const snapshot = await getDocs(
-        collection(db, "departments")
-      );
-
-      const data: Department[] = snapshot.docs.map((item) => ({
-        id: item.id,
-        name: item.data().name,
-      }));
-
-      setDepartments(data);
-    } catch (error) {
-      console.error("Departments load error:", error);
+      console.error("Failed to load users:", error);
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     loadUsers();
-    loadDepartments();
   }, []);
 
   async function createUser() {
-    if (!name.trim() || !email.trim() || !department) {
-      alert("Name, Email aur Department required hai.");
+    if (!name.trim()) {
+      alert("Please enter the user's name.");
+      return;
+    }
+
+    if (!email.trim()) {
+      alert("Please enter the user's email.");
+      return;
+    }
+
+    const emailExists = users.some(
+      (user) => user.email.toLowerCase() === email.trim().toLowerCase()
+    );
+
+    if (emailExists) {
+      alert("A user with this email already exists.");
       return;
     }
 
     try {
+      setSaving(true);
+
       await addDoc(collection(db, "users"), {
         name: name.trim(),
         email: email.trim(),
         role,
         department,
+        status,
         createdAt: new Date(),
       });
-
-      alert("User successfully save ho gaya!");
 
       setName("");
       setEmail("");
       setRole("Admin");
-      setDepartment("");
+      setStatus("Active");
       setShowForm(false);
 
       await loadUsers();
     } catch (error) {
-      console.error("User save error:", error);
-      alert("User save nahi hua.");
+      console.error("Failed to create user:", error);
+      alert("Unable to create the user.");
+    } finally {
+      setSaving(false);
     }
   }
 
-  async function removeUser(id: string) {
-    const confirmDelete = confirm(
-      "Kya aap is user ko delete karna chahte hain?"
-    );
-
-    if (!confirmDelete) return;
-
+  async function toggleStatus(user: User) {
     try {
-      await deleteDoc(doc(db, "users", id));
+      const newStatus =
+        user.status === "Active" ? "Inactive" : "Active";
+
+      await updateDoc(doc(db, "users", user.id), {
+        status: newStatus,
+      });
 
       await loadUsers();
     } catch (error) {
-      console.error("User delete error:", error);
-      alert("User delete nahi hua.");
+      console.error("Failed to update user:", error);
+      alert("Unable to update the user.");
+    }
+  }
+
+  async function deleteUser(user: User) {
+    if (user.role === "CEO") {
+      alert("The CEO account cannot be deleted.");
+      return;
+    }
+
+    const confirmed = confirm(
+      `Delete ${user.name}'s account record?`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", user.id));
+      await loadUsers();
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      alert("Unable to delete the user.");
     }
   }
 
   return (
     <main className="min-h-screen bg-[#080808] text-white">
 
-      {/* Header */}
-      <header className="border-b border-white/10">
+      {/* ================= HEADER ================= */}
+
+      <header className="border-b border-white/[0.08]">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
 
           <div>
-            <a
-              href="/dashboard"
-              className="text-xl font-bold"
-            >
-              NEXORA
-            </a>
-
-            <p className="text-xs text-gray-500">
-              Owner OS
-            </p>
-          </div>
-
-          <a
-            href="/dashboard"
-            className="text-sm text-gray-500 hover:text-white"
-          >
-            ← Dashboard
-          </a>
-
-        </div>
-      </header>
-
-      {/* Main */}
-      <div className="mx-auto max-w-7xl px-6 py-10">
-
-        {/* Title */}
-        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
-
-          <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-purple-400">
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-purple-400">
               Organization
             </p>
 
-            <h1 className="mt-2 text-4xl font-bold">
+            <h1 className="mt-1 text-xl font-semibold">
               Users
             </h1>
-
-            <p className="mt-2 text-gray-500">
-              Manage NEXORA team members and roles.
-            </p>
           </div>
 
           <button
             onClick={() => setShowForm(!showForm)}
-            className="rounded-xl bg-white px-5 py-3 font-semibold text-black hover:bg-gray-200"
+            className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-gray-200"
           >
-            + Create User
+            + Add User
           </button>
 
         </div>
+      </header>
 
-        {/* Create User Form */}
-        {showForm && (
-          <div className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+      {/* ================= CONTENT ================= */}
 
-            <h2 className="text-xl font-semibold">
-              Create User
-            </h2>
+      <div className="mx-auto max-w-7xl px-6 py-10">
 
-            <p className="mt-1 text-sm text-gray-500">
-              Add a team member to your NEXORA workspace.
+        {/* PAGE INTRO */}
+
+        <div className="mb-8">
+
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-purple-400">
+            Team Management
+          </p>
+
+          <h2 className="mt-2 text-4xl font-bold tracking-tight">
+            Users
+          </h2>
+
+          <p className="mt-2 max-w-2xl text-gray-500">
+            Manage team members, roles, departments and account status
+            from one place.
+          </p>
+
+        </div>
+
+        {/* ================= SUMMARY ================= */}
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-sm text-gray-500">
+              Total Users
             </p>
+
+            <p className="mt-3 text-3xl font-bold">
+              {users.length}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-sm text-gray-500">
+              Active Users
+            </p>
+
+            <p className="mt-3 text-3xl font-bold text-emerald-400">
+              {users.filter((user) => user.status === "Active").length}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-sm text-gray-500">
+              Inactive Users
+            </p>
+
+            <p className="mt-3 text-3xl font-bold text-yellow-400">
+              {users.filter((user) => user.status === "Inactive").length}
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+            <p className="text-sm text-gray-500">
+              Administrators
+            </p>
+
+            <p className="mt-3 text-3xl font-bold text-purple-400">
+              {
+                users.filter(
+                  (user) =>
+                    user.role === "CEO" ||
+                    user.role === "Admin"
+                ).length
+              }
+            </p>
+          </div>
+
+        </div>
+
+        {/* ================= CREATE USER ================= */}
+
+        {showForm && (
+          <section className="mt-8 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+
+            <div>
+              <h3 className="text-xl font-semibold">
+                Add User
+              </h3>
+
+              <p className="mt-1 text-sm text-gray-500">
+                Add a team member to your organization.
+              </p>
+            </div>
 
             <div className="mt-6 grid gap-5 md:grid-cols-2">
 
-              {/* Name */}
+              {/* NAME */}
+
               <div>
                 <label className="mb-2 block text-sm text-gray-300">
                   Full Name
                 </label>
 
                 <input
+                  type="text"
                   value={name}
-                  onChange={(e) =>
-                    setName(e.target.value)
-                  }
-                  placeholder="e.g. Rahul Kumar"
-                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 outline-none focus:border-purple-500"
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Enter full name"
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm outline-none transition placeholder:text-gray-700 focus:border-purple-500/50"
                 />
               </div>
 
-              {/* Email */}
+              {/* EMAIL */}
+
               <div>
                 <label className="mb-2 block text-sm text-gray-300">
-                  Email
+                  Email Address
                 </label>
 
                 <input
-                  value={email}
-                  onChange={(e) =>
-                    setEmail(e.target.value)
-                  }
                   type="email"
-                  placeholder="rahul@example.com"
-                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 outline-none focus:border-purple-500"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm outline-none transition placeholder:text-gray-700 focus:border-purple-500/50"
                 />
               </div>
 
-              {/* Role */}
+              {/* ROLE */}
+
               <div>
                 <label className="mb-2 block text-sm text-gray-300">
                   Role
@@ -235,145 +315,246 @@ export default function UsersPage() {
 
                 <select
                   value={role}
-                  onChange={(e) =>
-                    setRole(e.target.value)
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 outline-none"
+                  onChange={(e) => setRole(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm outline-none"
                 >
-                  <option value="Admin">
-                    Admin
-                  </option>
-
-                  <option value="Tech">
-                    Tech
-                  </option>
-
-                  <option value="Audit">
-                    Audit
-                  </option>
-
-                  <option value="Owner">
-                    Owner
-                  </option>
+                  {ROLES.filter((item) => item !== "CEO").map(
+                    (item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    )
+                  )}
                 </select>
               </div>
 
-              {/* Department */}
+              {/* DEPARTMENT */}
+
               <div>
                 <label className="mb-2 block text-sm text-gray-300">
                   Department
                 </label>
 
+                <div className="rounded-xl border border-purple-500/20 bg-purple-500/[0.05] px-4 py-3 text-sm text-purple-300">
+                  {department}
+                </div>
+              </div>
+
+              {/* STATUS */}
+
+              <div className="md:col-span-2">
+
+                <label className="mb-2 block text-sm text-gray-300">
+                  Account Status
+                </label>
+
                 <select
-                  value={department}
+                  value={status}
                   onChange={(e) =>
-                    setDepartment(e.target.value)
+                    setStatus(
+                      e.target.value as "Active" | "Inactive"
+                    )
                   }
-                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 outline-none"
+                  className="w-full rounded-xl border border-white/10 bg-black px-4 py-3 text-sm outline-none"
                 >
-                  <option value="">
-                    Select Department
+                  <option value="Active">
+                    Active
                   </option>
 
-                  {departments.map((item) => (
-                    <option
-                      key={item.id}
-                      value={item.name}
-                    >
-                      {item.name}
-                    </option>
-                  ))}
+                  <option value="Inactive">
+                    Inactive
+                  </option>
                 </select>
+
               </div>
 
             </div>
 
-            {/* Buttons */}
-            <div className="mt-6 flex gap-3">
+            {/* ACTIONS */}
+
+            <div className="mt-6 flex flex-wrap gap-3">
 
               <button
                 onClick={createUser}
-                className="rounded-xl bg-white px-6 py-3 font-semibold text-black hover:bg-gray-200"
+                disabled={saving}
+                className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-black transition hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                Save User
+                {saving ? "Creating..." : "Create User"}
               </button>
 
               <button
                 onClick={() => setShowForm(false)}
-                className="rounded-xl border border-white/10 px-6 py-3 text-gray-400 hover:bg-white/10 hover:text-white"
+                className="rounded-xl border border-white/10 px-6 py-3 text-sm text-gray-400 transition hover:bg-white/5 hover:text-white"
               >
                 Cancel
               </button>
 
             </div>
 
-          </div>
+          </section>
         )}
 
-        {/* Users Table */}
-        <div className="mt-8 overflow-hidden rounded-2xl border border-white/10">
+        {/* ================= USERS ================= */}
 
-          <div className="grid grid-cols-4 border-b border-white/10 bg-white/[0.03] px-6 py-4 text-xs uppercase tracking-wider text-gray-500">
+        <section className="mt-10">
 
-            <span>Name</span>
+          <div className="mb-5">
 
-            <span>Email</span>
+            <h3 className="text-lg font-semibold">
+              Team Members
+            </h3>
 
-            <span>Role</span>
-
-            <span>Action</span>
+            <p className="mt-1 text-sm text-gray-500">
+              All users currently registered in your organization.
+            </p>
 
           </div>
 
-          {users.length === 0 ? (
+          {loading ? (
 
-            <div className="px-6 py-12 text-center text-gray-500">
-              No users created yet.
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-10 text-center">
+              <p className="text-sm text-gray-500">
+                Loading users...
+              </p>
+            </div>
+
+          ) : users.length === 0 ? (
+
+            <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center">
+
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] text-xl">
+                ♙
+              </div>
+
+              <h4 className="mt-5 font-semibold">
+                No users yet
+              </h4>
+
+              <p className="mt-2 text-sm text-gray-600">
+                Add your first team member to get started.
+              </p>
+
+              <button
+                onClick={() => setShowForm(true)}
+                className="mt-5 rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-gray-200"
+              >
+                Add First User
+              </button>
+
             </div>
 
           ) : (
 
-            users.map((user) => (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 
-              <div
-                key={user.id}
-                className="grid grid-cols-4 items-center border-b border-white/10 px-6 py-5"
-              >
+              {users.map((user) => (
 
-                <div>
-                  <p className="font-medium">
-                    {user.name}
-                  </p>
+                <div
+                  key={user.id}
+                  className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 transition hover:border-white/20 hover:bg-white/[0.05]"
+                >
 
-                  <p className="mt-1 text-xs text-gray-500">
-                    {user.department}
-                  </p>
+                  {/* USER HEADER */}
+
+                  <div className="flex items-start justify-between gap-4">
+
+                    <div className="flex min-w-0 items-center gap-3">
+
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/10 text-sm font-bold text-purple-300">
+                        {user.name
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
+
+                      <div className="min-w-0">
+
+                        <h4 className="truncate font-semibold">
+                          {user.name}
+                        </h4>
+
+                        <p className="mt-1 truncate text-xs text-gray-600">
+                          {user.email}
+                        </p>
+
+                      </div>
+
+                    </div>
+
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+                        user.status === "Active"
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-yellow-500/10 text-yellow-400"
+                      }`}
+                    >
+                      {user.status}
+                    </span>
+
+                  </div>
+
+                  {/* ROLE */}
+
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+
+                    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
+
+                      <p className="text-[10px] uppercase tracking-wider text-gray-600">
+                        Role
+                      </p>
+
+                      <p className="mt-1 text-sm font-medium text-gray-300">
+                        {user.role}
+                      </p>
+
+                    </div>
+
+                    <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3">
+
+                      <p className="text-[10px] uppercase tracking-wider text-gray-600">
+                        Department
+                      </p>
+
+                      <p className="mt-1 truncate text-sm font-medium text-gray-300">
+                        {user.department}
+                      </p>
+
+                    </div>
+
+                  </div>
+
+                  {/* ACTIONS */}
+
+                  <div className="mt-5 flex items-center justify-between border-t border-white/[0.06] pt-4">
+
+                    <button
+                      onClick={() => toggleStatus(user)}
+                      className="text-xs text-gray-500 transition hover:text-white"
+                    >
+                      {user.status === "Active"
+                        ? "Deactivate"
+                        : "Activate"}
+                    </button>
+
+                    {user.role !== "CEO" && (
+                      <button
+                        onClick={() => deleteUser(user)}
+                        className="text-xs text-red-400 transition hover:text-red-300"
+                      >
+                        Delete
+                      </button>
+                    )}
+
+                  </div>
+
                 </div>
 
-                <span className="text-gray-400">
-                  {user.email}
-                </span>
+              ))}
 
-                <span className="text-purple-400">
-                  {user.role}
-                </span>
-
-                <button
-                  onClick={() =>
-                    removeUser(user.id)
-                  }
-                  className="text-left text-red-400 hover:text-red-300"
-                >
-                  Delete
-                </button>
-
-              </div>
-
-            ))
+            </div>
 
           )}
 
-        </div>
+        </section>
 
       </div>
 

@@ -10,7 +10,7 @@ export default function AppShell({
 }) {
   const pathname = usePathname();
 
-  // Login aur public website par dashboard sidebar nahi chahiye
+  // Public website aur login par sidebar nahi
   const hideSidebar =
     pathname === "/" ||
     pathname.startsWith("/login");
@@ -20,13 +20,22 @@ export default function AppShell({
   }
 
   return (
-    <div className="flex min-h-screen bg-[#080808] text-white">
+    <div className="min-h-screen bg-[#080808] text-white">
 
-      <Sidebar />
+      {/* Dashboard Layout */}
+      <div className="flex min-h-screen">
 
-      <section className="min-w-0 flex-1">
-        {children}
-      </section>
+        {/* Fixed / Independent Sidebar */}
+        <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 md:block">
+          <Sidebar />
+        </aside>
+
+        {/* Main Content */}
+        <main className="min-w-0 flex-1 md:ml-72">
+          {children}
+        </main>
+
+      </div>
 
     </div>
   );
