@@ -1,26 +1,254 @@
 @import "tailwindcss";
 
+/* =========================================================
+   NEXORA GLOBAL THEME
+   ========================================================= */
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  --nexora-accent: #9333ea;
+  --nexora-accent-soft: rgba(147, 51, 234, 0.1);
+
+  --nexora-border: rgba(0, 0, 0, 0.1);
+  --nexora-surface: #f5f5f5;
+  --nexora-surface-2: #eeeeee;
+  --nexora-sidebar: #fafafa;
+
+  --nexora-muted: #6b7280;
+  --nexora-input: #ffffff;
 }
+
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
+html.dark {
+  --background: #080808;
+  --foreground: #ededed;
+
+  --nexora-border: rgba(255, 255, 255, 0.1);
+  --nexora-surface: #101010;
+  --nexora-surface-2: #151515;
+  --nexora-sidebar: #0c0c0c;
+
+  --nexora-muted: #9ca3af;
+  --nexora-input: #111111;
+}
+
+/* =========================================================
+   LIGHT MODE
+   ========================================================= */
+
+html.light {
+  --background: #ffffff;
+  --foreground: #171717;
+
+  --nexora-border: rgba(0, 0, 0, 0.1);
+  --nexora-surface: #f5f5f5;
+  --nexora-surface-2: #eeeeee;
+  --nexora-sidebar: #fafafa;
+
+  --nexora-muted: #6b7280;
+  --nexora-input: #ffffff;
+}
+
+/* =========================================================
+   TAILWIND THEME
+   ========================================================= */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* =========================================================
+   HTML / BODY
+   ========================================================= */
+
+html,
+body {
+  min-height: 100%;
+}
+
+html {
+  background: var(--background);
+  color: var(--foreground);
 }
 
 body {
+  margin: 0;
+
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+/* =========================================================
+   NEXORA ACCENT COLORS
+   ========================================================= */
+
+/* Purple */
+
+html[data-accent="Purple"] {
+  --nexora-accent: #9333ea;
+  --nexora-accent-soft: rgba(147, 51, 234, 0.1);
+}
+
+/* Blue */
+
+html[data-accent="Blue"] {
+  --nexora-accent: #2563eb;
+  --nexora-accent-soft: rgba(37, 99, 235, 0.1);
+}
+
+/* Green */
+
+html[data-accent="Green"] {
+  --nexora-accent: #16a34a;
+  --nexora-accent-soft: rgba(22, 163, 74, 0.1);
+}
+
+/* Orange */
+
+html[data-accent="Orange"] {
+  --nexora-accent: #ea580c;
+  --nexora-accent-soft: rgba(234, 88, 12, 0.1);
+}
+
+/* Red */
+
+html[data-accent="Red"] {
+  --nexora-accent: #dc2626;
+  --nexora-accent-soft: rgba(220, 38, 38, 0.1);
+}
+
+/* =========================================================
+   GLOBAL SCROLLBAR
+   ========================================================= */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color:
+    rgba(128, 128, 128, 0.35)
+    transparent;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.35);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.55);
+}
+
+/* =========================================================
+   FORM ELEMENTS
+   ========================================================= */
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+}
+
+input,
+textarea,
+select {
+  color: var(--foreground);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--nexora-muted);
+}
+
+/* =========================================================
+   NEXORA UTILITY CLASSES
+   ========================================================= */
+
+.nexora-bg {
+  background: var(--background);
+}
+
+.nexora-surface {
+  background: var(--nexora-surface);
+}
+
+.nexora-surface-2 {
+  background: var(--nexora-surface-2);
+}
+
+.nexora-sidebar {
+  background: var(--nexora-sidebar);
+}
+
+.nexora-border {
+  border-color: var(--nexora-border);
+}
+
+.nexora-accent {
+  color: var(--nexora-accent);
+}
+
+.nexora-accent-bg {
+  background: var(--nexora-accent);
+}
+
+.nexora-accent-soft {
+  background: var(--nexora-accent-soft);
+}
+
+/* =========================================================
+   LINKS
+   ========================================================= */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* =========================================================
+   BUTTON FOCUS
+   ========================================================= */
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--nexora-accent);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   SELECTION
+   ========================================================= */
+
+::selection {
+  background: var(--nexora-accent);
+  color: #ffffff;
 }

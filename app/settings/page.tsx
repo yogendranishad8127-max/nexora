@@ -14,72 +14,72 @@ const sections: Section[] = [
   {
     id: "account",
     title: "Account",
-    description: "Manage your personal account and login settings.",
+    description: "Personal account settings",
     icon: "●",
   },
   {
     id: "workspace",
     title: "Workspace / Company",
-    description: "Manage your company and workspace information.",
+    description: "Company and workspace",
     icon: "▣",
   },
   {
     id: "access",
     title: "Users & Access",
-    description: "Control users, roles, departments and permissions.",
+    description: "Users, roles and permissions",
     icon: "♙",
   },
   {
     id: "security",
     title: "Security",
-    description: "Protect your NEXORA workspace.",
+    description: "Account protection",
     icon: "◆",
   },
   {
     id: "notifications",
     title: "Notifications",
-    description: "Choose which notifications you receive.",
+    description: "Notification preferences",
     icon: "●",
   },
   {
     id: "appearance",
     title: "Appearance",
-    description: "Customize how NEXORA looks.",
+    description: "Theme and dashboard",
     icon: "◐",
   },
   {
     id: "content",
     title: "Content",
-    description: "Manage content and media preferences.",
+    description: "Content and media",
     icon: "▶",
   },
   {
     id: "projects",
     title: "Projects & Tasks",
-    description: "Configure project and task defaults.",
+    description: "Project configuration",
     icon: "✓",
   },
   {
     id: "integrations",
     title: "Integrations",
-    description: "Connect external services with NEXORA.",
+    description: "External services",
     icon: "⌘",
   },
   {
     id: "data",
     title: "Data",
-    description: "Manage your workspace data.",
+    description: "Import and export",
     icon: "▤",
   },
   {
     id: "system",
     title: "System",
-    description: "Advanced system and administration controls.",
+    description: "System administration",
     icon: "⚙",
   },
 ];
 
-const toggleDefaults: Record<string, boolean> = {
+const toggleDefaults = {
   twoFactor: false,
   emailNotifications: true,
   taskNotifications: true,
@@ -94,6 +94,7 @@ const defaultValues = {
   language: "English",
   currency: "INR",
   timezone: "Asia/Kolkata",
+  theme: "Dark",
   companyName: "",
   companyDescription: "",
   websiteUrl: "",
@@ -103,13 +104,18 @@ const defaultValues = {
   youtubeChannel: "",
 };
 
+type ToggleKey = keyof typeof toggleDefaults;
+
 export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState("account");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   const [language, setLanguage] = useState(defaultValues.language);
   const [currency, setCurrency] = useState(defaultValues.currency);
   const [timezone, setTimezone] = useState(defaultValues.timezone);
+
+  const [theme, setTheme] = useState(defaultValues.theme);
 
   const [companyName, setCompanyName] = useState("");
   const [companyDescription, setCompanyDescription] = useState("");
@@ -132,53 +138,79 @@ export default function SettingsPage() {
     (section) => section.id === activeSection
   );
 
+  /* -----------------------------
+     THEME
+  ----------------------------- */
+
+  function applyTheme(value: string) {
+    const root = document.documentElement;
+
+    root.classList.remove("dark", "light");
+
+    if (value === "Dark") {
+      root.classList.add("dark");
+      return;
+    }
+
+    if (value === "Light") {
+      root.classList.add("light");
+      return;
+    }
+
+    const prefersDark = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    ).matches;
+
+    root.classList.add(prefersDark ? "dark" : "light");
+  }
+
+  /* -----------------------------
+     LOAD SETTINGS
+  ----------------------------- */
+
   useEffect(() => {
-    setLanguage(
-      localStorage.getItem("nexora-language") || defaultValues.language
-    );
+    const get = (key: string, fallback: string) =>
+      localStorage.getItem(key) ?? fallback;
 
-    setCurrency(
-      localStorage.getItem("nexora-currency") || defaultValues.currency
-    );
+    setLanguage(get("nexora-language", defaultValues.language));
+    setCurrency(get("nexora-currency", defaultValues.currency));
+    setTimezone(get("nexora-timezone", defaultValues.timezone));
 
-    setTimezone(
-      localStorage.getItem("nexora-timezone") || defaultValues.timezone
-    );
+    setTheme(get("nexora-theme", defaultValues.theme));
 
-    setCompanyName(
-      localStorage.getItem("nexora-company-name") || ""
-    );
-
+    setCompanyName(get("nexora-company-name", ""));
     setCompanyDescription(
-      localStorage.getItem("nexora-company-description") || ""
+      get("nexora-company-description", "")
     );
 
-    setWebsiteUrl(
-      localStorage.getItem("nexora-website-url") || ""
-    );
-
+    setWebsiteUrl(get("nexora-website-url", ""));
     setContactInformation(
-      localStorage.getItem("nexora-contact-information") || ""
+      get("nexora-contact-information", "")
     );
 
     setDashboardLayout(
-      localStorage.getItem("nexora-dashboard-layout") ||
+      get(
+        "nexora-dashboard-layout",
         defaultValues.dashboardLayout
+      )
     );
 
     setAccentColor(
-      localStorage.getItem("nexora-accent-color") ||
-        defaultValues.accentColor
+      get("nexora-accent-color", defaultValues.accentColor)
     );
 
     setYoutubeChannel(
-      localStorage.getItem("nexora-youtube-channel") || ""
+      get("nexora-youtube-channel", "")
     );
 
     const savedToggles = { ...toggleDefaults };
 
-    Object.keys(toggleDefaults).forEach((key) => {
-      const saved = localStorage.getItem(`nexora-toggle-${key}`);
+    (
+      Object.keys(toggleDefaults) as ToggleKey[]
+    ).forEach((key) => {
+      const saved = localStorage.getItem(
+        `nexora-toggle-${key}`
+      );
 
       if (saved !== null) {
         savedToggles[key] = saved === "true";
@@ -186,125 +218,210 @@ export default function SettingsPage() {
     });
 
     setToggles(savedToggles);
+
+    applyTheme(
+      get("nexora-theme", defaultValues.theme)
+    );
+
+    document.documentElement.setAttribute(
+      "data-accent",
+      get(
+        "nexora-accent-color",
+        defaultValues.accentColor
+      )
+    );
+
+    setLoaded(true);
   }, []);
+
+  /* -----------------------------
+     LIVE THEME
+  ----------------------------- */
+
+  useEffect(() => {
+    if (!loaded) return;
+
+    applyTheme(theme);
+
+    document.documentElement.setAttribute(
+      "data-accent",
+      accentColor
+    );
+
+    if (theme !== "System") return;
+
+    const mediaQuery = window.matchMedia(
+      "(prefers-color-scheme: dark)"
+    );
+
+    const handleChange = () => {
+      applyTheme("System");
+    };
+
+    mediaQuery.addEventListener(
+      "change",
+      handleChange
+    );
+
+    return () => {
+      mediaQuery.removeEventListener(
+        "change",
+        handleChange
+      );
+    };
+  }, [theme, accentColor, loaded]);
+
+  /* -----------------------------
+     HELPERS
+  ----------------------------- */
+
+  function save(key: string, value: string) {
+    localStorage.setItem(key, value);
+  }
 
   function selectSection(id: string) {
     setActiveSection(id);
     setMobileMenuOpen(false);
   }
 
-  function saveValue(key: string, value: string) {
-    localStorage.setItem(key, value);
-  }
-
   function updateLanguage(value: string) {
     setLanguage(value);
-    saveValue("nexora-language", value);
+    save("nexora-language", value);
   }
 
   function updateCurrency(value: string) {
     setCurrency(value);
-    saveValue("nexora-currency", value);
+    save("nexora-currency", value);
   }
 
   function updateTimezone(value: string) {
     setTimezone(value);
-    saveValue("nexora-timezone", value);
+    save("nexora-timezone", value);
+  }
+
+  function updateTheme(value: string) {
+    setTheme(value);
+    save("nexora-theme", value);
+    applyTheme(value);
   }
 
   function updateCompanyName(value: string) {
     setCompanyName(value);
-    saveValue("nexora-company-name", value);
+    save("nexora-company-name", value);
   }
 
   function updateCompanyDescription(value: string) {
     setCompanyDescription(value);
-    saveValue("nexora-company-description", value);
+    save("nexora-company-description", value);
   }
 
   function updateWebsiteUrl(value: string) {
     setWebsiteUrl(value);
-    saveValue("nexora-website-url", value);
+    save("nexora-website-url", value);
   }
 
   function updateContactInformation(value: string) {
     setContactInformation(value);
-    saveValue("nexora-contact-information", value);
+    save("nexora-contact-information", value);
   }
 
   function updateDashboardLayout(value: string) {
     setDashboardLayout(value);
-    saveValue("nexora-dashboard-layout", value);
+    save("nexora-dashboard-layout", value);
   }
 
   function updateAccentColor(value: string) {
     setAccentColor(value);
-    saveValue("nexora-accent-color", value);
+    save("nexora-accent-color", value);
+
+    document.documentElement.setAttribute(
+      "data-accent",
+      value
+    );
   }
 
   function updateYoutubeChannel(value: string) {
     setYoutubeChannel(value);
-    saveValue("nexora-youtube-channel", value);
+    save("nexora-youtube-channel", value);
   }
 
-  function toggleSetting(key: keyof typeof toggleDefaults) {
-    const newValue = !toggles[key];
+  function toggleSetting(key: ToggleKey) {
+    setToggles((current) => {
+      const newValue = !current[key];
 
-    setToggles((current) => ({
-      ...current,
-      [key]: newValue,
-    }));
+      localStorage.setItem(
+        `nexora-toggle-${key}`,
+        String(newValue)
+      );
 
-    localStorage.setItem(
-      `nexora-toggle-${key}`,
-      String(newValue)
-    );
+      return {
+        ...current,
+        [key]: newValue,
+      };
+    });
   }
+
+  /* -----------------------------
+     PAGE
+  ----------------------------- */
 
   return (
     <main className="min-h-screen bg-[#080808] text-white">
       <div className="flex min-h-screen">
+        {/* LEFT SETTINGS SIDEBAR */}
+
         <SettingsSidebar
           sections={sections}
           activeSection={activeSection}
           onSelect={selectSection}
         />
 
+        {/* MAIN */}
+
         <section className="min-w-0 flex-1">
-          <header className="border-b border-white/10 px-6 py-6 md:px-10">
+          {/* HEADER */}
+
+          <header className="border-b border-white/10 px-5 py-6 sm:px-6 lg:px-10">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm uppercase tracking-[0.2em] text-purple-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-purple-400">
                   System Control
                 </p>
 
-                <h1 className="mt-2 text-3xl font-bold">
+                <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
                   Settings
                 </h1>
 
-                <p className="mt-2 max-w-2xl text-sm text-gray-500">
-                  Manage your NEXORA account, workspace, users,
-                  security, content and system controls.
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-500">
+                  Manage your NEXORA account, workspace,
+                  security, notifications, content,
+                  projects and system controls.
                 </p>
               </div>
 
+              {/* MOBILE BUTTON */}
+
               <button
                 type="button"
-                onClick={() => setMobileMenuOpen(true)}
-                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-400 md:hidden"
+                onClick={() =>
+                  setMobileMenuOpen(true)
+                }
+                className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-gray-300 transition hover:bg-white/[0.06] lg:hidden"
               >
                 Settings
               </button>
             </div>
           </header>
 
-          <div className="px-6 py-8 md:px-10">
+          {/* CONTENT */}
+
+          <div className="px-5 py-6 sm:px-6 sm:py-8 lg:px-10">
             {activeSection === "danger" ? (
               <DangerZone />
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03]">
-                <div className="border-b border-white/10 p-6 md:p-8">
-                  <p className="text-xs uppercase tracking-[0.2em] text-purple-400">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.02]">
+                <div className="border-b border-white/10 p-6 sm:p-8">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-purple-400">
                     Settings
                   </p>
 
@@ -312,7 +429,7 @@ export default function SettingsPage() {
                     {activeSectionData?.title}
                   </h2>
 
-                  <p className="mt-2 text-sm text-gray-500">
+                  <p className="mt-2 text-sm leading-6 text-gray-500">
                     {activeSectionData?.description}
                   </p>
                 </div>
@@ -327,36 +444,55 @@ export default function SettingsPage() {
                 {activeSection === "workspace" && (
                   <WorkspaceSettings
                     companyName={companyName}
-                    companyDescription={companyDescription}
+                    companyDescription={
+                      companyDescription
+                    }
                     websiteUrl={websiteUrl}
-                    contactInformation={contactInformation}
+                    contactInformation={
+                      contactInformation
+                    }
                     timezone={timezone}
                     language={language}
                     currency={currency}
-                    onCompanyNameChange={updateCompanyName}
+                    onCompanyNameChange={
+                      updateCompanyName
+                    }
                     onCompanyDescriptionChange={
                       updateCompanyDescription
                     }
-                    onWebsiteUrlChange={updateWebsiteUrl}
+                    onWebsiteUrlChange={
+                      updateWebsiteUrl
+                    }
                     onContactInformationChange={
                       updateContactInformation
                     }
-                    onTimezoneChange={updateTimezone}
-                    onLanguageChange={updateLanguage}
-                    onCurrencyChange={updateCurrency}
+                    onTimezoneChange={
+                      updateTimezone
+                    }
+                    onLanguageChange={
+                      updateLanguage
+                    }
+                    onCurrencyChange={
+                      updateCurrency
+                    }
                   />
                 )}
 
-                {activeSection === "access" && <AccessSettings />}
+                {activeSection === "access" && (
+                  <AccessSettings />
+                )}
 
                 {activeSection === "security" && (
                   <SecuritySettings
                     enabled={toggles.twoFactor}
-                    onToggle={() => toggleSetting("twoFactor")}
+                    onToggle={() =>
+                      toggleSetting("twoFactor")
+                    }
                   />
                 )}
 
-                {activeSection === "notifications" && (
+                {activeSection ===
+                  "notifications" && (
                   <NotificationSettings
                     toggles={toggles}
                     onToggle={toggleSetting}
@@ -365,37 +501,54 @@ export default function SettingsPage() {
 
                 {activeSection === "appearance" && (
                   <AppearanceSettings
-                    dashboardLayout={dashboardLayout}
+                    theme={theme}
+                    dashboardLayout={
+                      dashboardLayout
+                    }
                     accentColor={accentColor}
+                    onThemeChange={updateTheme}
                     onDashboardLayoutChange={
                       updateDashboardLayout
                     }
-                    onAccentColorChange={updateAccentColor}
+                    onAccentColorChange={
+                      updateAccentColor
+                    }
                   />
                 )}
 
                 {activeSection === "content" && (
                   <ContentSettings
-                    youtubeChannel={youtubeChannel}
+                    youtubeChannel={
+                      youtubeChannel
+                    }
                     onYoutubeChannelChange={
                       updateYoutubeChannel
                     }
                   />
                 )}
 
-                {activeSection === "projects" && <ProjectsSettings />}
+                {activeSection === "projects" && (
+                  <ProjectsSettings />
+                )}
 
-                {activeSection === "integrations" && (
+                {activeSection ===
+                  "integrations" && (
                   <IntegrationsSettings />
                 )}
 
-                {activeSection === "data" && <DataSettings />}
+                {activeSection === "data" && (
+                  <DataSettings />
+                )}
 
                 {activeSection === "system" && (
                   <SystemSettings
-                    enabled={toggles.maintenanceMode}
+                    enabled={
+                      toggles.maintenanceMode
+                    }
                     onToggle={() =>
-                      toggleSetting("maintenanceMode")
+                      toggleSetting(
+                        "maintenanceMode"
+                      )
                     }
                   />
                 )}
@@ -405,73 +558,55 @@ export default function SettingsPage() {
         </section>
       </div>
 
+      {/* MOBILE SETTINGS DRAWER */}
+
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/70 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-50 bg-black/70 lg:hidden"
+          onClick={() =>
+            setMobileMenuOpen(false)
+          }
         >
           <div
-            className="h-full w-80 max-w-[85%] bg-[#0c0c0c] p-6"
-            onClick={(event) => event.stopPropagation()}
+            className="h-full"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
           >
-            <div className="mb-8 flex items-center justify-between">
-              <div>
-                <div className="text-xl font-bold">NEXORA</div>
+            <div className="flex h-full">
+              <div className="h-full">
+                <div className="absolute right-4 top-4 z-10">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMobileMenuOpen(false)
+                    }
+                    className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-gray-400"
+                  >
+                    ×
+                  </button>
+                </div>
 
-                <p className="text-xs text-gray-500">
-                  Settings
-                </p>
+                <SettingsSidebar
+                  sections={sections}
+                  activeSection={activeSection}
+                  onSelect={selectSection}
+                  mobile
+                />
               </div>
 
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="text-xl text-gray-500"
-              >
-                ×
-              </button>
+              <div className="flex-1" />
             </div>
-
-            <nav className="space-y-1">
-              {sections.map((section) => (
-                <button
-                  key={section.id}
-                  type="button"
-                  onClick={() => selectSection(section.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm ${
-                    activeSection === section.id
-                      ? "bg-white/10 text-white"
-                      : "text-gray-400 hover:bg-white/5"
-                  }`}
-                >
-                  <span className="w-5 text-center">
-                    {section.icon}
-                  </span>
-
-                  {section.title}
-                </button>
-              ))}
-
-              <button
-                type="button"
-                onClick={() => selectSection("danger")}
-                className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm ${
-                  activeSection === "danger"
-                    ? "bg-red-500/10 text-red-400"
-                    : "text-gray-400 hover:bg-red-500/5"
-                }`}
-              >
-                <span className="w-5 text-center">⚠</span>
-
-                Danger Zone
-              </button>
-            </nav>
           </div>
         </div>
       )}
     </main>
   );
 }
+
+/* =====================================================
+   ACCOUNT
+===================================================== */
 
 function AccountSettings({
   language,
@@ -485,36 +620,103 @@ function AccountSettings({
       <SettingRow
         title="Profile"
         description="Manage your personal profile information."
+        control={
+          <span className="text-xs text-gray-600">
+            Coming with account profile
+          </span>
+        }
       />
 
       <SettingRow
         title="Name"
         description="Your display name for the NEXORA workspace."
+        control={
+          <span className="text-xs text-gray-600">
+            Account
+          </span>
+        }
       />
 
       <SettingRow
         title="Email"
         description="Your account email address."
+        control={
+          <span className="text-xs text-gray-600">
+            Firebase Auth
+          </span>
+        }
       />
 
       <SettingRow
         title="Profile Photo"
         description="Update your account profile photo."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Profile photo upload will be connected to Firebase Storage."
+              )
+            }
+            className="button-secondary"
+          >
+            Change
+          </button>
+        }
       />
 
       <SettingRow
         title="Change Password"
         description="Change your account password."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Password change will be connected to Firebase Authentication."
+              )
+            }
+            className="button-secondary"
+          >
+            Change
+          </button>
+        }
       />
 
       <SettingRow
         title="Login Sessions"
         description="Review active login sessions."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Session management will be connected to authentication."
+              )
+            }
+            className="button-secondary"
+          >
+            View
+          </button>
+        }
       />
 
       <SettingRow
         title="Logout"
         description="Sign out from your NEXORA account."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Logout will be connected to Firebase Authentication."
+              )
+            }
+            className="rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10"
+          >
+            Logout
+          </button>
+        }
       />
 
       <SettingRow
@@ -537,6 +739,10 @@ function AccountSettings({
     </div>
   );
 }
+
+/* =====================================================
+   WORKSPACE
+===================================================== */
 
 function WorkspaceSettings({
   companyName,
@@ -562,9 +768,13 @@ function WorkspaceSettings({
   language: string;
   currency: string;
   onCompanyNameChange: (value: string) => void;
-  onCompanyDescriptionChange: (value: string) => void;
+  onCompanyDescriptionChange: (
+    value: string
+  ) => void;
   onWebsiteUrlChange: (value: string) => void;
-  onContactInformationChange: (value: string) => void;
+  onContactInformationChange: (
+    value: string
+  ) => void;
   onTimezoneChange: (value: string) => void;
   onLanguageChange: (value: string) => void;
   onCurrencyChange: (value: string) => void;
@@ -597,7 +807,7 @@ function WorkspaceSettings({
 
       <SettingInput
         title="Contact Information"
-        description="Company phone number, email or other contact information."
+        description="Company phone, email or other contact information."
         value={contactInformation}
         onChange={onContactInformationChange}
         placeholder="Enter contact information"
@@ -646,7 +856,13 @@ function WorkspaceSettings({
           <Select
             value={currency}
             onChange={onCurrencyChange}
-            options={["INR", "USD", "EUR", "GBP", "AED"]}
+            options={[
+              "INR",
+              "USD",
+              "EUR",
+              "GBP",
+              "AED",
+            ]}
           />
         }
       />
@@ -654,12 +870,16 @@ function WorkspaceSettings({
   );
 }
 
+/* =====================================================
+   ACCESS
+===================================================== */
+
 function AccessSettings() {
   return (
     <div className="divide-y divide-white/10">
       <SettingRow
         title="User Management"
-        description="Manage workspace users from the Users section."
+        description="Manage workspace users."
         href="/users"
       />
 
@@ -696,6 +916,10 @@ function AccessSettings() {
   );
 }
 
+/* =====================================================
+   SECURITY
+===================================================== */
+
 function SecuritySettings({
   enabled,
   onToggle,
@@ -708,138 +932,211 @@ function SecuritySettings({
       <SettingRow
         title="Two-Factor Authentication"
         description="Add an additional security layer to your account."
-        control={<Toggle enabled={enabled} onClick={onToggle} />}
+        control={
+          <Toggle
+            enabled={enabled}
+            onClick={onToggle}
+          />
+        }
       />
 
       <SettingRow
         title="Password & Security"
         description="Review and manage password security."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Password security will be connected to Firebase Authentication."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingRow
         title="Active Sessions"
         description="Review devices currently signed into your account."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Active sessions will be connected to authentication."
+              )
+            }
+            className="button-secondary"
+          >
+            View
+          </button>
+        }
       />
 
       <SettingRow
         title="Login History"
         description="Review recent account login activity."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Login history will be connected to backend audit logs."
+              )
+            }
+            className="button-secondary"
+          >
+            View
+          </button>
+        }
       />
 
       <SettingRow
         title="Device Management"
         description="Manage devices connected to your account."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Device management will be connected to authentication."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingRow
         title="Security Alerts"
         description="Receive important security notifications."
+        control={
+          <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400">
+            Enabled
+          </span>
+        }
       />
     </div>
   );
 }
+
+/* =====================================================
+   NOTIFICATIONS
+===================================================== */
 
 function NotificationSettings({
   toggles,
   onToggle,
 }: {
-  toggles: Record<string, boolean>;
-  onToggle: (key: keyof typeof toggleDefaults) => void;
+  toggles: typeof toggleDefaults;
+  onToggle: (key: ToggleKey) => void;
 }) {
+  const items: {
+    key: ToggleKey;
+    title: string;
+    description: string;
+  }[] = [
+    {
+      key: "emailNotifications",
+      title: "Email Notifications",
+      description:
+        "Receive important notifications by email.",
+    },
+    {
+      key: "taskNotifications",
+      title: "Task Notifications",
+      description:
+        "Receive updates about assigned tasks.",
+    },
+    {
+      key: "projectNotifications",
+      title: "Project Notifications",
+      description:
+        "Receive updates about projects.",
+    },
+    {
+      key: "userActivity",
+      title: "User Activity",
+      description:
+        "Receive notifications about workspace activity.",
+    },
+    {
+      key: "securityAlerts",
+      title: "Security Alerts",
+      description:
+        "Receive important security alerts.",
+    },
+    {
+      key: "publishedNotifications",
+      title: "Published Work Notifications",
+      description:
+        "Receive notifications when published work changes.",
+    },
+  ];
+
   return (
     <div className="divide-y divide-white/10">
-      <SettingRow
-        title="Email Notifications"
-        description="Receive important notifications by email."
-        control={
-          <Toggle
-            enabled={toggles.emailNotifications}
-            onClick={() => onToggle("emailNotifications")}
-          />
-        }
-      />
-
-      <SettingRow
-        title="Task Notifications"
-        description="Receive updates about assigned tasks."
-        control={
-          <Toggle
-            enabled={toggles.taskNotifications}
-            onClick={() => onToggle("taskNotifications")}
-          />
-        }
-      />
-
-      <SettingRow
-        title="Project Notifications"
-        description="Receive updates about projects."
-        control={
-          <Toggle
-            enabled={toggles.projectNotifications}
-            onClick={() => onToggle("projectNotifications")}
-          />
-        }
-      />
-
-      <SettingRow
-        title="User Activity"
-        description="Receive notifications about workspace user activity."
-        control={
-          <Toggle
-            enabled={toggles.userActivity}
-            onClick={() => onToggle("userActivity")}
-          />
-        }
-      />
-
-      <SettingRow
-        title="Security Alerts"
-        description="Receive important security alerts."
-        control={
-          <Toggle
-            enabled={toggles.securityAlerts}
-            onClick={() => onToggle("securityAlerts")}
-          />
-        }
-      />
-
-      <SettingRow
-        title="Published Work Notifications"
-        description="Receive notifications when published work changes."
-        control={
-          <Toggle
-            enabled={toggles.publishedNotifications}
-            onClick={() =>
-              onToggle("publishedNotifications")
-            }
-          />
-        }
-      />
+      {items.map((item) => (
+        <SettingRow
+          key={item.key}
+          title={item.title}
+          description={item.description}
+          control={
+            <Toggle
+              enabled={toggles[item.key]}
+              onClick={() =>
+                onToggle(item.key)
+              }
+            />
+          }
+        />
+      ))}
     </div>
   );
 }
 
+/* =====================================================
+   APPEARANCE
+===================================================== */
+
 function AppearanceSettings({
+  theme,
   dashboardLayout,
   accentColor,
+  onThemeChange,
   onDashboardLayoutChange,
   onAccentColorChange,
 }: {
+  theme: string;
   dashboardLayout: string;
   accentColor: string;
-  onDashboardLayoutChange: (value: string) => void;
-  onAccentColorChange: (value: string) => void;
+  onThemeChange: (value: string) => void;
+  onDashboardLayoutChange: (
+    value: string
+  ) => void;
+  onAccentColorChange: (
+    value: string
+  ) => void;
 }) {
   return (
     <div className="divide-y divide-white/10">
       <SettingRow
-        title="Dark / Light Mode"
+        title="Theme"
         description="Choose how NEXORA should appear."
         control={
           <Select
-            value="Dark"
-            onChange={() => {}}
-            options={["Dark", "Light", "System"]}
+            value={theme}
+            onChange={onThemeChange}
+            options={[
+              "Dark",
+              "Light",
+              "System",
+            ]}
           />
         }
       />
@@ -869,7 +1166,11 @@ function AppearanceSettings({
           <Select
             value={dashboardLayout}
             onChange={onDashboardLayoutChange}
-            options={["Default", "Compact", "Wide"]}
+            options={[
+              "Default",
+              "Compact",
+              "Wide",
+            ]}
           />
         }
       />
@@ -877,28 +1178,47 @@ function AppearanceSettings({
       <SettingRow
         title="Sidebar Settings"
         description="Configure dashboard sidebar behaviour."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Sidebar is currently fixed on the left side."
+              )
+            }
+            className="button-secondary"
+          >
+            Left Sidebar
+          </button>
+        }
       />
     </div>
   );
 }
+
+/* =====================================================
+   CONTENT
+===================================================== */
 
 function ContentSettings({
   youtubeChannel,
   onYoutubeChannelChange,
 }: {
   youtubeChannel: string;
-  onYoutubeChannelChange: (value: string) => void;
+  onYoutubeChannelChange: (
+    value: string
+  ) => void;
 }) {
   return (
     <div className="divide-y divide-white/10">
       <SettingRow
         title="YouTube Settings"
-        description="Configure YouTube publishing and channel preferences."
+        description="Configure YouTube publishing preferences."
         href="/youtube"
       />
 
       <SettingRow
-        title="Published Work Settings"
+        title="Published Work"
         description="Configure published work preferences."
         href="/published-work"
       />
@@ -906,11 +1226,37 @@ function ContentSettings({
       <SettingRow
         title="Media Settings"
         description="Manage media and content preferences."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Media preferences are ready for backend integration."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingRow
         title="Upload Preferences"
         description="Configure default upload behaviour."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Upload preferences are ready for backend integration."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingInput
@@ -924,45 +1270,115 @@ function ContentSettings({
   );
 }
 
+/* =====================================================
+   PROJECTS
+===================================================== */
+
 function ProjectsSettings() {
   return (
     <div className="divide-y divide-white/10">
       <SettingRow
-        title="Default Project Settings"
-        description="Configure default project behaviour."
+        title="Projects"
+        description="Manage projects."
         href="/projects"
+      />
+
+      <SettingRow
+        title="Tasks"
+        description="Manage task workflow."
+        href="/tasks"
       />
 
       <SettingRow
         title="Task Statuses"
         description="Configure task workflow statuses."
-        href="/tasks"
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Task status configuration will be connected to the Tasks module."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingRow
         title="Priority Levels"
         description="Configure project and task priorities."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Priority configuration will be connected to the Projects module."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingRow
         title="Project Visibility"
         description="Configure who can see projects."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Project visibility will be connected to roles and permissions."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
 
       <SettingRow
         title="Default Assignments"
         description="Configure default project assignments."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Default assignments will be connected to Users and Roles."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
     </div>
   );
 }
+
+/* =====================================================
+   INTEGRATIONS
+===================================================== */
 
 function IntegrationsSettings() {
   return (
     <div className="divide-y divide-white/10">
       <SettingRow
         title="Firebase"
-        description="Firebase authentication and database integration."
+        description="Authentication and database integration."
+        control={
+          <span className="rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400">
+            Connected
+          </span>
+        }
       />
 
       <SettingRow
@@ -974,34 +1390,160 @@ function IntegrationsSettings() {
       <SettingRow
         title="Google Services"
         description="Google service integrations."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Google Services integration will be configured here."
+              )
+            }
+            className="button-secondary"
+          >
+            Configure
+          </button>
+        }
       />
 
       <SettingRow
         title="Email Service"
         description="Configure email delivery services."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Email service configuration will be added when the backend is connected."
+              )
+            }
+            className="button-secondary"
+          >
+            Configure
+          </button>
+        }
       />
 
       <SettingRow
         title="Other API Integrations"
         description="Manage additional API connections."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Additional API integrations will be managed here."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
     </div>
   );
 }
 
+/* =====================================================
+   DATA
+===================================================== */
+
 function DataSettings() {
+  function exportSettings() {
+    const data: Record<string, unknown> = {};
+
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index);
+
+      if (key?.startsWith("nexora-")) {
+        data[key] = localStorage.getItem(key);
+      }
+    }
+
+    const blob = new Blob(
+      [JSON.stringify(data, null, 2)],
+      {
+        type: "application/json",
+      }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = "nexora-settings-backup.json";
+
+    document.body.appendChild(link);
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function importSettings() {
+    const input =
+      document.createElement("input");
+
+    input.type = "file";
+    input.accept = ".json,application/json";
+
+    input.onchange = () => {
+      const file = input.files?.[0];
+
+      if (!file) return;
+
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(
+            String(reader.result)
+          );
+
+          Object.entries(parsed).forEach(
+            ([key, value]) => {
+              if (
+                key.startsWith("nexora-") &&
+                typeof value === "string"
+              ) {
+                localStorage.setItem(
+                  key,
+                  value
+                );
+              }
+            }
+          );
+
+          alert(
+            "Settings imported successfully. Reloading..."
+          );
+
+          window.location.reload();
+        } catch {
+          alert(
+            "Invalid NEXORA settings file."
+          );
+        }
+      };
+
+      reader.readAsText(file);
+    };
+
+    input.click();
+  }
+
   return (
     <div className="divide-y divide-white/10">
       <SettingRow
-        title="Export Data"
-        description="Export workspace data."
+        title="Export Settings"
+        description="Download your current NEXORA settings as a JSON file."
         control={
           <button
             type="button"
-            onClick={() =>
-              alert("Data export will be connected to your backend.")
-            }
-            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-white"
+            onClick={exportSettings}
+            className="button-secondary"
           >
             Export
           </button>
@@ -1009,15 +1551,13 @@ function DataSettings() {
       />
 
       <SettingRow
-        title="Import Data"
-        description="Import workspace data."
+        title="Import Settings"
+        description="Restore settings from a NEXORA JSON backup."
         control={
           <button
             type="button"
-            onClick={() =>
-              alert("Data import will be connected to your backend.")
-            }
-            className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-400 hover:bg-white/5 hover:text-white"
+            onClick={importSettings}
+            className="button-secondary"
           >
             Import
           </button>
@@ -1026,21 +1566,73 @@ function DataSettings() {
 
       <SettingRow
         title="Backup"
-        description="Manage workspace backups."
+        description="Create a local backup of NEXORA settings."
+        control={
+          <button
+            type="button"
+            onClick={exportSettings}
+            className="button-secondary"
+          >
+            Backup
+          </button>
+        }
       />
 
       <SettingRow
         title="Activity Logs"
         description="Review workspace activity logs."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Activity logs will be connected to Firestore."
+              )
+            }
+            className="button-secondary"
+          >
+            View
+          </button>
+        }
       />
 
       <SettingRow
-        title="Delete Data"
-        description="Permanently delete selected workspace data."
+        title="Delete Local Settings"
+        description="Remove all locally saved NEXORA settings from this browser."
+        control={
+          <button
+            type="button"
+            onClick={() => {
+              const confirmed =
+                window.confirm(
+                  "Delete all locally saved NEXORA settings?"
+                );
+
+              if (!confirmed) return;
+
+              Object.keys(localStorage)
+                .filter((key) =>
+                  key.startsWith("nexora-")
+                )
+                .forEach((key) =>
+                  localStorage.removeItem(key)
+                );
+
+              window.location.reload();
+            }}
+            className="rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10"
+          >
+            Delete
+          </button>
+        }
       />
     </div>
   );
 }
+
+/* =====================================================
+   SYSTEM
+===================================================== */
 
 function SystemSettings({
   enabled,
@@ -1075,20 +1667,225 @@ function SystemSettings({
       <SettingRow
         title="Audit Logs"
         description="Review administrative audit activity."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Audit logs will be connected to Firestore."
+              )
+            }
+            className="button-secondary"
+          >
+            View
+          </button>
+        }
       />
 
       <SettingRow
         title="Admin Activity"
         description="Review administrator actions."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "Admin activity will be connected to Firestore."
+              )
+            }
+            className="button-secondary"
+          >
+            View
+          </button>
+        }
       />
 
       <SettingRow
         title="API Settings"
         description="Manage application API configuration."
+        control={
+          <button
+            type="button"
+            onClick={() =>
+              alert(
+                "API configuration will be added when backend API management is implemented."
+              )
+            }
+            className="button-secondary"
+          >
+            Manage
+          </button>
+        }
       />
     </div>
   );
 }
+
+/* =====================================================
+   DANGER ZONE
+===================================================== */
+
+function DangerZone() {
+  const [confirm, setConfirm] =
+    useState<string | null>(null);
+
+  const actions = [
+    {
+      title: "Reset Workspace",
+      description:
+        "Reset locally saved workspace configuration.",
+      action: "reset",
+    },
+    {
+      title: "Delete Users",
+      description:
+        "User deletion requires backend confirmation.",
+      action: "users",
+    },
+    {
+      title: "Delete Workspace",
+      description:
+        "Workspace deletion requires backend confirmation.",
+      action: "workspace",
+    },
+    {
+      title: "Permanently Delete Account",
+      description:
+        "Account deletion requires Firebase backend confirmation.",
+      action: "account",
+    },
+  ];
+
+  function execute(action: string) {
+    if (action === "reset") {
+      Object.keys(localStorage)
+        .filter((key) =>
+          key.startsWith("nexora-")
+        )
+        .forEach((key) =>
+          localStorage.removeItem(key)
+        );
+
+      alert(
+        "Local NEXORA settings have been reset."
+      );
+
+      window.location.reload();
+
+      return;
+    }
+
+    alert(
+      "This destructive action is protected until backend/Firebase confirmation is connected."
+    );
+
+    setConfirm(null);
+  }
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-red-500/20 bg-red-500/[0.03]">
+      <div className="border-b border-red-500/10 p-6 sm:p-8">
+        <p className="text-xs uppercase tracking-[0.2em] text-red-400">
+          Advanced
+        </p>
+
+        <h2 className="mt-2 text-xl font-semibold text-red-400">
+          Danger Zone
+        </h2>
+
+        <p className="mt-2 text-sm leading-6 text-gray-500">
+          These actions can permanently affect your
+          workspace and data.
+        </p>
+      </div>
+
+      <div className="divide-y divide-red-500/10">
+        {actions.map((action) => (
+          <div
+            key={action.title}
+            className="flex flex-col gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div>
+              <h3 className="text-sm font-medium">
+                {action.title}
+              </h3>
+
+              <p className="mt-1 text-xs text-gray-500">
+                {action.description}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                setConfirm(action.title)
+              }
+              className="self-start rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400 hover:bg-red-500/10 sm:self-auto"
+            >
+              Manage
+            </button>
+          </div>
+        ))}
+      </div>
+
+      {confirm && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"
+          onClick={() => setConfirm(null)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-red-500/20 bg-[#101010] p-6"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <h2 className="text-lg font-semibold text-red-400">
+              {confirm}
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-gray-500">
+              Are you sure you want to continue?
+              Destructive backend actions will only
+              execute after Firebase/backend
+              confirmation is implemented.
+            </p>
+
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirm(null)
+                }
+                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-400 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  execute(
+                    actions.find(
+                      (item) =>
+                        item.title === confirm
+                    )?.action ?? ""
+                  )
+                }
+                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* =====================================================
+   GENERIC COMPONENTS
+===================================================== */
 
 function SettingRow({
   title,
@@ -1102,31 +1899,33 @@ function SettingRow({
   href?: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-6 p-6 transition hover:bg-white/[0.02]">
+    <div className="flex flex-col gap-4 p-5 transition hover:bg-white/[0.02] sm:flex-row sm:items-center sm:justify-between sm:p-6">
       <div className="min-w-0">
-        <h3 className="text-sm font-medium">
+        <h3 className="text-sm font-medium text-white">
           {title}
         </h3>
 
-        <p className="mt-1 text-xs text-gray-600">
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-600">
           {description}
         </p>
       </div>
 
-      {control ? (
-        control
-      ) : href ? (
-        <a
-          href={href}
-          className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-400 transition hover:bg-white/5 hover:text-white"
-        >
-          Open
-        </a>
-      ) : (
-        <span className="shrink-0 rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-600">
-          Manage
-        </span>
-      )}
+      <div className="shrink-0">
+        {control ? (
+          control
+        ) : href ? (
+          <a
+            href={href}
+            className="button-secondary inline-block"
+          >
+            Open
+          </a>
+        ) : (
+          <span className="rounded-lg border border-white/10 px-3 py-2 text-xs text-gray-600">
+            Manage
+          </span>
+        )}
+      </div>
     </div>
   );
 }
@@ -1145,22 +1944,24 @@ function SettingInput({
   placeholder: string;
 }) {
   return (
-    <div className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+    <div className="flex flex-col gap-4 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
-        <h3 className="text-sm font-medium">
+        <h3 className="text-sm font-medium text-white">
           {title}
         </h3>
 
-        <p className="mt-1 text-xs text-gray-600">
+        <p className="mt-1 max-w-2xl text-xs leading-5 text-gray-600">
           {description}
         </p>
       </div>
 
       <input
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
         placeholder={placeholder}
-        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-purple-500/50 md:max-w-sm"
+        className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none placeholder:text-gray-600 focus:border-purple-500/50 lg:max-w-md"
       />
     </div>
   );
@@ -1178,8 +1979,10 @@ function Select({
   return (
     <select
       value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-xs text-white outline-none focus:border-purple-500/50"
+      onChange={(event) =>
+        onChange(event.target.value)
+      }
+      className="min-w-[130px] rounded-lg border border-white/10 bg-[#101010] px-3 py-2 text-xs text-white outline-none focus:border-purple-500/50"
     >
       {options.map((option) => (
         <option
@@ -1205,127 +2008,20 @@ function Toggle({
     <button
       type="button"
       onClick={onClick}
-      className={`relative h-6 w-11 shrink-0 rounded-full transition ${
-        enabled ? "bg-purple-600" : "bg-white/10"
-      }`}
       aria-pressed={enabled}
+      className={`relative h-6 w-11 shrink-0 rounded-full transition ${
+        enabled
+          ? "bg-purple-600"
+          : "bg-white/10"
+      }`}
     >
       <span
         className={`absolute top-1 h-4 w-4 rounded-full bg-white transition ${
-          enabled ? "left-6" : "left-1"
+          enabled
+            ? "left-6"
+            : "left-1"
         }`}
       />
     </button>
-  );
-}
-
-function DangerZone() {
-  const [confirm, setConfirm] = useState<string | null>(null);
-
-  const actions = [
-    {
-      title: "Reset Workspace",
-      description: "Reset workspace configuration.",
-    },
-    {
-      title: "Delete Users",
-      description: "Permanently remove selected users.",
-    },
-    {
-      title: "Delete Workspace",
-      description: "Permanently delete the entire workspace.",
-    },
-    {
-      title: "Permanently Delete Account",
-      description:
-        "Delete your NEXORA account and associated data.",
-    },
-  ];
-
-  return (
-    <div className="rounded-2xl border border-red-500/20 bg-red-500/[0.03]">
-      <div className="border-b border-red-500/10 p-6 md:p-8">
-        <h2 className="text-xl font-semibold text-red-400">
-          Danger Zone
-        </h2>
-
-        <p className="mt-2 text-sm text-gray-500">
-          These actions can permanently affect your NEXORA
-          workspace and data.
-        </p>
-      </div>
-
-      <div className="divide-y divide-red-500/10">
-        {actions.map((action) => (
-          <div
-            key={action.title}
-            className="flex items-center justify-between gap-6 p-6"
-          >
-            <div>
-              <h3 className="text-sm font-medium text-white">
-                {action.title}
-              </h3>
-
-              <p className="mt-1 text-xs text-gray-500">
-                {action.description}
-              </p>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setConfirm(action.title)}
-              className="shrink-0 rounded-lg border border-red-500/20 px-3 py-2 text-xs text-red-400 transition hover:bg-red-500/10"
-            >
-              Manage
-            </button>
-          </div>
-        ))}
-      </div>
-
-      {confirm && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-6 backdrop-blur-sm"
-          onClick={() => setConfirm(null)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl border border-red-500/20 bg-[#101010] p-6"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h2 className="text-lg font-semibold text-red-400">
-              {confirm}
-            </h2>
-
-            <p className="mt-3 text-sm text-gray-500">
-              Are you sure you want to continue?
-              This action may permanently affect your
-              workspace.
-            </p>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setConfirm(null)}
-                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-400 hover:bg-white/5"
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  alert(
-                    `${confirm} requires backend confirmation before execution.`
-                  );
-                  setConfirm(null);
-                }}
-                className="rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
 }

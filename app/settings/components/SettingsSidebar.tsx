@@ -3,6 +3,7 @@
 type Section = {
   id: string;
   title: string;
+  description: string;
   icon: string;
 };
 
@@ -10,94 +11,105 @@ type SettingsSidebarProps = {
   sections: Section[];
   activeSection: string;
   onSelect: (id: string) => void;
+  mobile?: boolean;
 };
 
 export function SettingsSidebar({
   sections,
   activeSection,
   onSelect,
+  mobile = false,
 }: SettingsSidebarProps) {
   return (
-    <aside className="hidden w-72 shrink-0 border-r border-white/10 bg-[#0c0c0c] p-6 md:block">
-      <div className="mb-10">
-        <a href="/dashboard">
-          <div className="text-xl font-bold tracking-tight text-white">
-            NEXORA
-          </div>
+    <aside
+      className={
+        mobile
+          ? "h-full w-80 max-w-[85vw] overflow-y-auto bg-[#0c0c0c] p-5"
+          : "sticky top-0 hidden h-screen w-72 shrink-0 overflow-y-auto border-r border-white/10 bg-[#0c0c0c] p-5 lg:block"
+      }
+    >
+      <div className="mb-8 px-2">
+        <div className="text-xl font-bold tracking-tight text-white">
+          NEXORA
+        </div>
 
-          <p className="mt-1 text-xs text-gray-500">
-            Owner OS
-          </p>
-        </a>
+        <p className="mt-1 text-xs text-gray-500">
+          Owner Workspace
+        </p>
       </div>
 
-      <a
-        href="/dashboard"
-        className="mb-8 flex items-center gap-3 rounded-lg px-4 py-3 text-sm text-gray-400 transition hover:bg-white/5 hover:text-white"
-      >
-        <span>⌂</span>
-        <span>Dashboard</span>
-      </a>
+      <div className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-600">
+        Settings
+      </div>
 
-      <div>
-        <p className="mb-3 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-600">
-          Settings
-        </p>
+      <nav className="space-y-1">
+        {sections.map((section) => {
+          const active = activeSection === section.id;
 
-        <nav className="space-y-1">
-          {sections.map((section) => {
-            const isActive = activeSection === section.id;
-
-            return (
-              <button
-                key={section.id}
-                type="button"
-                onClick={() => onSelect(section.id)}
-                className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm transition ${
-                  isActive
-                    ? "bg-white/10 font-medium text-white"
-                    : "text-gray-400 hover:bg-white/5 hover:text-white"
+          return (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => onSelect(section.id)}
+              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                active
+                  ? "bg-purple-500/10 text-white"
+                  : "text-gray-400 hover:bg-white/[0.04] hover:text-white"
+              }`}
+            >
+              <span
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs ${
+                  active
+                    ? "bg-purple-500/15 text-purple-400"
+                    : "bg-white/[0.03] text-gray-500 group-hover:text-gray-300"
                 }`}
               >
-                <span className="w-5 text-center text-xs">
-                  {section.icon}
+                {section.icon}
+              </span>
+
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-medium">
+                  {section.title}
                 </span>
 
-                <span>{section.title}</span>
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      <div className="mt-8">
-        <p className="mb-3 px-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-gray-600">
-          System
-        </p>
+                <span className="mt-0.5 block truncate text-[10px] text-gray-600">
+                  {section.description}
+                </span>
+              </span>
+            </button>
+          );
+        })}
 
         <button
           type="button"
           onClick={() => onSelect("danger")}
-          className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm transition ${
+          className={`group mt-4 flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
             activeSection === "danger"
-              ? "bg-red-500/10 font-medium text-red-400"
-              : "text-gray-400 hover:bg-red-500/5 hover:text-red-400"
+              ? "bg-red-500/10 text-red-400"
+              : "text-gray-400 hover:bg-red-500/[0.04] hover:text-red-300"
           }`}
         >
-          <span className="w-5 text-center">⚠</span>
-          <span>Danger Zone</span>
-        </button>
-      </div>
+          <span
+            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs ${
+              activeSection === "danger"
+                ? "bg-red-500/10 text-red-400"
+                : "bg-white/[0.03] text-gray-500"
+            }`}
+          >
+            ⚠
+          </span>
 
-      <div className="mt-10 border-t border-white/10 pt-6">
-        <a
-          href="/"
-          className="flex items-center gap-2 px-4 text-sm text-gray-500 transition hover:text-white"
-        >
-          <span>↗</span>
-          <span>Public Website</span>
-        </a>
-      </div>
+          <span>
+            <span className="block text-sm font-medium">
+              Danger Zone
+            </span>
+
+            <span className="mt-0.5 block text-[10px] text-gray-600">
+              Destructive actions
+            </span>
+          </span>
+        </button>
+      </nav>
     </aside>
   );
 }
