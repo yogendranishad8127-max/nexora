@@ -12,9 +12,10 @@ export default function AppShell({
 
   // Public website aur login par sidebar nahi
   const hideSidebar =
-    pathname === "/" ||
-    pathname.startsWith("/login");
-
+  pathname === "/" ||
+  pathname.startsWith("/login") ||
+  pathname.startsWith("/settings");
+  
   if (hideSidebar) {
     return <>{children}</>;
   }
